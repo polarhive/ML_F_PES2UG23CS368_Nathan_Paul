@@ -22,7 +22,18 @@ def get_entropy_of_dataset(data: np.ndarray) -> float:
     # TODO: Implement entropy calculation
     # Hint: Use np.unique() to get unique classes and their counts
     # Hint: Handle the case when probability is 0 to avoid log2(0)
-    pass
+
+    if data is None or len(data) == 0: return 0.0
+    target = data[:, -1]
+    counts = np.unique(target, return_counts=True)
+
+    total = counts.sum()
+    if total == 0: return 0.0
+
+    probs = counts.astype(np.float64) / float(total)
+    non_zero = probs > 0
+    entropy = -np.sum(probs[non_zero] * np.log2(probs[non_zero]))
+    return float(entropy)
 
 
 def get_avg_info_of_attribute(data: np.ndarray, attribute: int) -> float:
@@ -51,7 +62,25 @@ def get_avg_info_of_attribute(data: np.ndarray, attribute: int) -> float:
     #   2. Calculate the entropy of that subset
     #   3. Weight it by the proportion of samples with that value
     #   4. Sum all weighted entropies
-    pass
+
+    if data is None or len(data) == 0: 
+        return 0.0
+
+    n_samples = data.shape[0]
+    values, counts = np.unique(data[:, attribute], return_counts=True)
+
+    avg_info = 0.0
+    for v, cnt in zip(values, counts):
+        mask = data[:, attribute] == v
+        subset = data[mask]
+        weight = cnt / n_samples
+        # Calculate entropy for the subset
+        subset_entropy = get_entropy_of_dataset(subset)
+        # Add weighted entropy to avg_info
+        avg_info += weight * subset_entropy
+
+    # Return the average information (weighted entropy)
+    return float(avg_info)
 
 
 def get_information_gain(data: np.ndarray, attribute: int) -> float:
@@ -78,7 +107,13 @@ def get_information_gain(data: np.ndarray, attribute: int) -> float:
     # Hint: Information Gain = Dataset Entropy - Average Information of Attribute
     # Hint: Use the functions you implemented above
     # Hint: Round the result to 4 decimal places
-    pass
+
+    if data is None or len(data) == 0: return 0.0
+
+    dataset_entropy = get_entropy_of_dataset(data)
+    avg_info = get_avg_info_of_attribute(data, attribute)
+    gain = dataset_entropy - avg_info
+    return round(float(gain), 4)
 
 def get_selected_attribute(data: np.ndarray) -> tuple:
     """
@@ -105,4 +140,18 @@ def get_selected_attribute(data: np.ndarray) -> tuple:
     # Hint: Store gains in a dictionary with attribute index as key
     # Hint: Find the attribute with maximum gain using max() with key parameter
     # Hint: Return tuple (gain_dictionary, selected_attribute_index)
-    pass
+
+    if data is None or len(data) == 0:
+        return ({}, -1)
+
+    n_cols = data.shape[1]
+    # Exclude the last column (target)
+    gains = {}
+    for attr in range(n_cols - 1):
+        gains[attr] = get_information_gain(data, attr)
+
+    if not gains:
+        return (gains, -1)
+
+    selected_attr = max(gains, key=lambda k: gains[k])
+    return (gains, selected_attr)
